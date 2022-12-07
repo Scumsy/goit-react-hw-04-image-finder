@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,103 +9,83 @@ import { LoadMoreBtn } from './Button/Button';
 import { Loader } from './Loader/Loader';
 import { ModalImage } from './ModalImage/ModalImage';
 
-export class App extends Component {
-  state = {
-    inputForSearch: '',
-    images: [],
-    showModal: false,
-    largeImageModal: null,
-    page: 1,
-  };
+export const App = () => {
+  const [inputForSearch, setInputForSearch] = useState('');
+  const [images, setImages] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageModal, setlargeImageModal] = useState(null);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState('');
 
-  async componentDidUpdate(_, prevState) {
-    const prevSearch = prevState.inputForSearch;
-    const newSearch = this.state.inputForSearch;
-    const prevPage = prevState.page;
-    const nextPage = this.state.page;
-
-    if (prevSearch !== newSearch || prevPage !== nextPage) {
-      this.setState({ status: 'pending' });
-      if (prevSearch !== newSearch) {
-        this.setState({ page: 1 });
-      }
-
+  useEffect(() => {
+    if (inputForSearch === '') {
+      return;
+    }
+    setStatus('pending');
+    async function getImages() {
       try {
-        const searchedImages = await getSearchRequest(
-          this.state.inputForSearch,
-          this.state.page
-        );
-        this.setState(prevState => ({
-          images: [...prevState.images, ...searchedImages],
-          status: 'resolved',
-        }));
+        const searchedImages = await getSearchRequest(inputForSearch, page);
+        setImages(prevState => [...prevState, ...searchedImages]);
+        setStatus('resolved');
         if (searchedImages.length === 0) {
-          this.noSearchResultError();
+          noSearchResultError();
         }
       } catch (error) {
-        this.errorOnRequest();
-        this.setState({ status: 'rejected' });
+        errorOnRequest();
+        setStatus('rejected');
       }
     }
-  }
+    getImages();
+  }, [inputForSearch, page]);
 
-  noSearchResultError = () =>
+  const noSearchResultError = () =>
     toast(
       'Sorry, there are no images matching your search query. Please, try again.',
       { position: 'top-center', autoClose: 1500 }
     );
 
-  errorOnRequest = () =>
+  const errorOnRequest = () =>
     toast('Something went wrong. Please, reload the page.', {
       position: 'top-center',
       autoClose: 1500,
     });
 
-  onSubmit = inputForSearch => {
-    this.setState({ inputForSearch, images: [], page: 1 });
+  const onSubmit = inputForSearch => {
+    setInputForSearch(inputForSearch);
+    setImages([]);
+    setPage(1);
   };
 
-  onLoadMorebtnClick = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const onLoadMorebtnClick = () => {
+    setPage(prevState => prevState + 1);
   };
 
-  onToggleModal = largeImageURL => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
-    this.setState({ largeImageModal: largeImageURL });
+  const onToggleModal = largeImageURL => {
+    setShowModal(!showModal);
+    setlargeImageModal(largeImageURL);
   };
 
-  render() {
-    return (
-      <div
-        style={{
-          height: '100vh',
-          // display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          fontSize: 40,
-          color: '#010101',
-        }}
-      >
-        <Searchbar onSubmit={this.onSubmit} />
-        {this.state.status === 'pending' && <Loader />}
-        <ImageGallery
-          pictures={this.state.images}
-          onClick={this.onToggleModal}
-        />
-        {this.state.showModal && (
-          <ModalImage onClose={this.onToggleModal}>
-            <img src={this.state.largeImageModal} alt="" />
-          </ModalImage>
-        )}
-        {this.state.images.length >= 12 && (
-          <LoadMoreBtn onClick={this.onLoadMorebtnClick} />
-        )}
-        <ToastContainer />
-      </div>
-    );
-  }
-}
+  return (
+    <div
+      style={{
+        height: '100vh',
+        // display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: 40,
+        color: '#010101',
+      }}
+    >
+      <Searchbar onSubmit={onSubmit} />
+      {status === 'pending' && <Loader />}
+      <ImageGallery pictures={images} onClick={onToggleModal} />
+      {showModal && (
+        <ModalImage onClose={onToggleModal}>
+          <img src={largeImageModal} alt="" />
+        </ModalImage>
+      )}
+      {images.length >= 12 && <LoadMoreBtn onClick={onLoadMorebtnClick} />}
+      <ToastContainer />
+    </div>
+  );
+};
